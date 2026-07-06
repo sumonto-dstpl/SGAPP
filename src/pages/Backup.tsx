@@ -1,13 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Cloud, Download, Trash2, RefreshCw, UploadCloud, FileSpreadsheet,
-  Clock, Shield, CheckCircle, ChevronLeft, ChevronRight, Info
+  Clock, Shield, CheckCircle, ChevronLeft, ChevronRight, Info, Play, Pause
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useData } from '../store/DataContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
 
 const PER_PAGE = 5;
+
+// Auto-backup settings storage key
+const AUTO_BACKUP_KEY = 'pgms_auto_backup_settings';
+
+interface AutoBackupSettings {
+  enabled: boolean;
+  frequency: 'Daily' | 'Weekly' | 'Monthly';
+  time: string;
+  lastRun: string | null;
+}
 
 // ─── Excel export helper ──────────────────────────────────────────────────────
 
@@ -64,6 +74,92 @@ export default function Backup() {
   const [restoreFile, setRestoreFile] = useState('');
   const [restoring, setRestoring] = useState(false);
   const [page, setPage] = useState(1);
+
+  // Auto backup state
+  const [autoSettings, setAutoSettings] = useState<AutoBackupSettings>(() => {
+    const saved = localStorage.getItem(AUTO_BACKUP_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); }
+      catch { /* ignore */ }
+    }
+    return { enabled: false, frequency: 'Daily', time: '23:00', lastRun: null };
+  });
+
+  // Persist auto backup settings
+  useEffect(() => {
+    localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify(autoSettings));
+  }, [autoSettings]);
+
+  // Auto backup scheduler
+  useEffect(() => {
+    if (!autoSettings.enabled) return;
+
+    const checkAndRunBackup = () => {
+      const now = new Date();
+      const [hours, minutes] = autoSettings.time.split(':').map(Number);
+      const scheduledTime = new Date(now);
+      scheduledTime.setHours(hours, minutes, 0, 0);
+
+      const lastRunDate = autoSettings.lastRun ? new Date(autoSettings.lastRun) : null;
+      const todayStr = now.toISOString().split('T')[0];
+      const lastRunStr = lastRunDate ? lastRunDate.toISOString().split('T')[0] : null;
+
+      // Check if we should run backup
+      let shouldRun = false;
+
+      if (lastRunStr !== todayStr) {
+        const timeDiff = now.getTime() - scheduledTime.getTime();
+        const withinWindow = timeDiff >= 0 && timeDiff < 60000; // Within 1 minute window
+
+        if (withinWindow) {
+          if (autoSettings.frequency === 'Daily') {
+            shouldRun = true;
+          } else if (autoSettings.frequency === 'Weekly') {
+            shouldRun = now.getDay() === 0; // Sunday
+          } else if (autoSettings.frequency === 'Monthly') {
+            shouldRun = now.getDate() === 1; // First of month
+          }
+        }
+      }
+
+      if (shouldRun) {
+        runAutoBackup();
+      }
+    };
+
+    const runAutoBackup = async () => {
+      try {
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0].replace(/-/g, '_');
+        exportExcel(markets, shops, garages, payments, `PGMS_AutoBackup_${dateStr}.xlsx`);
+
+        const label = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                    + ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const sizeKB = (markets.length * 0.5 + shops.length * 0.8 + garages.length * 0.8 + payments.length * 0.3) * 10;
+        const size = `${(sizeKB / 100 + 20 + Math.random() * 3).toFixed(1)} MB`;
+
+        await addBackup({
+          name: `Auto Backup ${dateStr}`,
+          description: `Automatic ${autoSettings.frequency.toLowerCase()} backup`,
+          type: 'Full Backup',
+          createdAt: label,
+          size,
+          createdBy: 'System',
+        });
+
+        setAutoSettings(prev => ({ ...prev, lastRun: now.toISOString() }));
+        showSnackbar('Auto backup completed and downloaded', 'success');
+      } catch {
+        showSnackbar('Auto backup failed', 'error');
+      }
+    };
+
+    // Check every 30 seconds
+    const interval = setInterval(checkAndRunBackup, 30000);
+    checkAndRunBackup(); // Initial check
+
+    return () => clearInterval(interval);
+  }, [autoSettings.enabled, autoSettings.frequency, autoSettings.time, markets, shops, garages, payments, addBackup, showSnackbar]);
 
   const totalPages = Math.max(1, Math.ceil(backups.length / PER_PAGE));
   const pageBackups = backups.slice((page-1)*PER_PAGE, page*PER_PAGE);
@@ -240,14 +336,66 @@ export default function Backup() {
 
           {/* Auto backup info */}
           <div className="mt-6 pt-5 border-t border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
-              <Clock size={16} className="text-gray-400" />
-              <span className="text-sm font-semibold text-gray-700">Auto Backup</span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Clock size={16} className="text-gray-500" />
+                <span className="text-sm font-semibold text-gray-800">Auto Backup</span>
+              </div>
+              <button
+                onClick={() => setAutoSettings(prev => ({ ...prev, enabled: !prev.enabled }))}
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${autoSettings.enabled ? 'bg-green-600' : 'bg-gray-200'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${autoSettings.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-xl p-3">
-              <CheckCircle size={15} className="text-green-500 flex-shrink-0" />
-              <span>Automatic backups are recorded in history below. Use <strong>Run Backup</strong> for an instant Excel download.</span>
-            </div>
+
+            {autoSettings.enabled && (
+              <div className="space-y-3 bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Frequency</label>
+                    <select
+                      value={autoSettings.frequency}
+                      onChange={e => setAutoSettings(prev => ({ ...prev, frequency: e.target.value as AutoBackupSettings['frequency'] }))}
+                      className="w-full border border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                    >
+                      <option value="Daily">Daily</option>
+                      <option value="Weekly">Weekly (Sunday)</option>
+                      <option value="Monthly">Monthly (1st)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Time</label>
+                    <input
+                      type="time"
+                      value={autoSettings.time}
+                      onChange={e => setAutoSettings(prev => ({ ...prev, time: e.target.value }))}
+                      className="w-full border border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-green-700">
+                  {autoSettings.enabled ? <Play size={12} /> : <Pause size={12} />}
+                  <span>
+                    {autoSettings.enabled
+                      ? `Auto backup scheduled: ${autoSettings.frequency} at ${autoSettings.time}`
+                      : 'Auto backup is paused'}
+                  </span>
+                </div>
+                {autoSettings.lastRun && (
+                  <div className="text-xs text-gray-500">
+                    Last run: {new Date(autoSettings.lastRun).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!autoSettings.enabled && (
+              <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-xl p-3">
+                <Pause size={15} className="text-gray-400 flex-shrink-0" />
+                <span>Auto backup is disabled. Enable to schedule automatic backups.</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Search, Eye, IndianRupee, ShoppingBag, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Eye, IndianRupee, ShoppingBag, CheckCircle, XCircle, Banknote } from 'lucide-react';
 import { useData } from '../store/DataContext';
+import { useSnackbar } from '../contexts/SnackbarContext';
 import { Shop } from '../types';
 import ShopDetailModal from '../components/ShopDetailModal';
 
@@ -15,13 +16,31 @@ function fmtDate(s: string) {
 }
 
 export default function Shops() {
-  const { shops, markets } = useData();
+  const { shops, markets, updateShop, addPayment } = useData();
+  const { showSnackbar } = useSnackbar();
   const [search, setSearch]       = useState('');
   const [marketF, setMarketF]     = useState('');
   const [typeF, setTypeF]         = useState('');
   const [statusF, setStatusF]     = useState('');
   const [page, setPage]           = useState(1);
   const [selected, setSelected]   = useState<Shop | null>(null);
+  const [collecting, setCollecting] = useState<string | null>(null);
+
+  const handleCollect = async (shop: Shop) => {
+    setCollecting(shop.id);
+    try {
+      await updateShop(shop.id, { paidRent: shop.monthlyRent, currentDue: 0, paymentStatus: 'Paid' });
+      await addPayment({
+        date: new Date().toISOString().split('T')[0],
+        name: `${shop.tenantName} (${shop.shopName})`,
+        type: 'Shop',
+        amount: shop.currentDue,
+        reference: `COLL-${Date.now().toString(36).toUpperCase()}`,
+      });
+      showSnackbar(`₹${shop.currentDue.toLocaleString('en-IN')} collected from ${shop.shopName}`, 'success');
+    } catch { showSnackbar('Failed to collect payment', 'error'); }
+    finally { setCollecting(null); }
+  };
 
   const filtered = shops.filter(s => {
     const q = search.toLowerCase();
@@ -135,9 +154,21 @@ export default function Shops() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setSelected(s)} className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors">
-                      <Eye size={16} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {s.paymentStatus === 'Due' && s.currentDue > 0 && (
+                        <button
+                          onClick={() => handleCollect(s)}
+                          disabled={collecting === s.id}
+                          className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-60"
+                        >
+                          <Banknote size={13} />
+                          {collecting === s.id ? '...' : 'Collect'}
+                        </button>
+                      )}
+                      <button onClick={() => setSelected(s)} className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors">
+                        <Eye size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

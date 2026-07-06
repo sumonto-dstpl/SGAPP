@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   ArrowLeft, Plus, Trash2, RefreshCw, Search, Eye, MoreHorizontal, X,
-  Store, IndianRupee, Wallet, FileWarning, ChevronLeft, ChevronRight
+  Store, IndianRupee, Wallet, FileWarning, ChevronLeft, ChevronRight, Banknote
 } from 'lucide-react';
 import { Market, Shop } from '../types';
 import { useData } from '../store/DataContext';
@@ -102,8 +102,9 @@ function AddShopModal({ open, onClose, market }: { open: boolean; onClose: () =>
 interface Props { market: Market; onBack: () => void }
 
 export default function MarketDetail({ market, onBack }: Props) {
-  const { shops, deleteShop, refresh } = useData();
+  const { shops, deleteShop, updateShop, addPayment, refresh } = useData();
   const { showSnackbar } = useSnackbar();
+  const [collecting, setCollecting] = useState<string | null>(null);
 
   const [tab, setTab]         = useState<'Rented' | 'Leased'>('Rented');
   const [search, setSearch]   = useState('');
@@ -127,6 +128,22 @@ export default function MarketDetail({ market, onBack }: Props) {
   const totalRent  = marketShops.reduce((s, x) => s + x.monthlyRent, 0);
   const totalPaid  = marketShops.reduce((s, x) => s + x.paidRent, 0);
   const totalDue   = marketShops.reduce((s, x) => s + x.currentDue, 0);
+
+  const handleCollect = async (shop: Shop) => {
+    setCollecting(shop.id);
+    try {
+      await updateShop(shop.id, { paidRent: shop.monthlyRent, currentDue: 0, paymentStatus: 'Paid' });
+      await addPayment({
+        date: new Date().toISOString().split('T')[0],
+        name: `${shop.tenantName} (${shop.shopName})`,
+        type: 'Shop',
+        amount: shop.currentDue,
+        reference: `COLL-${Date.now().toString(36).toUpperCase()}`,
+      });
+      showSnackbar(`₹${shop.currentDue.toLocaleString('en-IN')} collected from ${shop.shopName}`, 'success');
+    } catch { showSnackbar('Failed to collect payment', 'error'); }
+    finally { setCollecting(null); }
+  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -265,6 +282,17 @@ export default function MarketDetail({ market, onBack }: Props) {
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-1">
+                      {shop.paymentStatus === 'Due' && (
+                        <button
+                          onClick={() => handleCollect(shop)}
+                          disabled={collecting === shop.id}
+                          title={`Collect ₹${shop.currentDue.toLocaleString('en-IN')}`}
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-60 whitespace-nowrap"
+                        >
+                          <Banknote size={13} />
+                          {collecting === shop.id ? '...' : `Collect`}
+                        </button>
+                      )}
                       <button onClick={() => setSelected(shop)}
                         className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors">
                         <Eye size={16} />

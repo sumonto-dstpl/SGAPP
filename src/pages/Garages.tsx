@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, RefreshCw, Search, Eye, MoreHorizontal, Car, IndianRupee, Wallet, FileWarning, X, ChevronLeft, ChevronRight, PenLine } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Search, Eye, MoreHorizontal, Car, IndianRupee, Wallet, FileWarning, X, ChevronLeft, ChevronRight, PenLine, Banknote } from 'lucide-react';
 import { useData } from '../store/DataContext';
 import { Garage } from '../types';
 import Modal from '../components/Modal';
@@ -136,7 +136,7 @@ function GarageDetailModal({ garage, onClose }: { garage: Garage; onClose: () =>
 }
 
 export default function Garages() {
-  const { garages, deleteGarage } = useData();
+  const { garages, deleteGarage, updateGarage, addPayment } = useData();
   const { showSnackbar } = useSnackbar();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
@@ -146,6 +146,23 @@ export default function Garages() {
   const [showAdd, setShowAdd] = useState(false);
   const [viewGarage, setViewGarage] = useState<Garage | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [collecting, setCollecting] = useState<string | null>(null);
+
+  const handleCollect = async (garage: Garage) => {
+    setCollecting(garage.id);
+    try {
+      await updateGarage(garage.id, { currentDue: 0, paymentStatus: 'Paid' });
+      await addPayment({
+        date: new Date().toISOString().split('T')[0],
+        name: `${garage.ownerName} (${garage.garageNo})`,
+        type: 'Garage',
+        amount: garage.currentDue,
+        reference: `COLL-${Date.now().toString(36).toUpperCase()}`,
+      });
+      showSnackbar(`₹${garage.currentDue.toLocaleString('en-IN')} collected from ${garage.garageNo}`, 'success');
+    } catch { showSnackbar('Failed to collect payment', 'error'); }
+    finally { setCollecting(null); }
+  };
 
   const totalRent = garages.reduce((s, g) => s + g.monthlyRent, 0);
   const totalPaid = garages.filter(g => g.paymentStatus === 'Paid').reduce((s, g) => s + g.monthlyRent, 0);
@@ -266,6 +283,16 @@ export default function Garages() {
                 <td className="px-4 py-4 text-gray-600">{garage.leaseEndDate}</td>
                 <td className="px-4 py-4">
                   <div className="flex items-center justify-end gap-1">
+                    {garage.paymentStatus === 'Due' && garage.currentDue > 0 && (
+                      <button
+                        onClick={() => handleCollect(garage)}
+                        disabled={collecting === garage.id}
+                        className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-60"
+                      >
+                        <Banknote size={13} />
+                        {collecting === garage.id ? '...' : 'Collect'}
+                      </button>
+                    )}
                     <button onClick={() => setViewGarage(garage)} className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
                       <Eye size={15} />
                     </button>
