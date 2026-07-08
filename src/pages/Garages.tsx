@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Trash2, RefreshCw, Search, Eye, MoreHorizontal, Car, IndianRupee, Wallet, FileWarning, X, ChevronLeft, ChevronRight, PenLine, Banknote } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Trash2, RefreshCw, Search, Eye, MoreHorizontal, Car, IndianRupee, Wallet, FileWarning, X, ChevronLeft, ChevronRight, Banknote } from 'lucide-react';
 import { useData } from '../store/DataContext';
 import { Garage } from '../types';
 import Modal from '../components/Modal';
@@ -12,14 +12,62 @@ function AddGarageModal({ open, onClose }: { open: boolean; onClose: () => void 
   const { showSnackbar } = useSnackbar();
   const [form, setForm] = useState({
     ownerName: '', mobileNumber: '', vehicleNumber: '', vehicleType: 'Car',
-    monthlyRent: '', leaseEndDate: '', leaseType: 'Monthly', startDate: '',
+    monthlyRent: '', leaseEndDate: '', leaseType: 'Monthly', startDate: '', dueDate: '',
   });
 
   const nextNo = `G-${String(garages.length + 1).padStart(2, '0')}`;
 
+  // Autofill end date based on lease type and start date
+  useEffect(() => {
+    if (form.startDate && form.leaseType !== 'Long-term') {
+      const startDate = new Date(form.startDate);
+      let endDate: Date;
+      let dueDate: Date;
+
+      if (form.leaseType === 'Monthly') {
+        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate() - 1);
+        dueDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate());
+      } else {
+        // Yearly
+        endDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate() - 1);
+        dueDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+      }
+
+      const formatDate = (d: Date) => d.toISOString().split('T')[0];
+      setForm(p => ({ ...p, leaseEndDate: formatDate(endDate), dueDate: formatDate(dueDate) }));
+    }
+  }, [form.startDate, form.leaseType]);
+
+  // Reset dates when lease type changes
+  useEffect(() => {
+    if (form.leaseType === 'Long-term') {
+      // Clear end date for long-term (manual entry)
+      setForm(p => ({ ...p, leaseEndDate: '', dueDate: '' }));
+    } else if (form.startDate) {
+      // Recalculate for Monthly/Yearly
+      const startDate = new Date(form.startDate);
+      let endDate: Date;
+      let dueDate: Date;
+
+      if (form.leaseType === 'Monthly') {
+        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate() - 1);
+        dueDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate());
+      } else {
+        endDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate() - 1);
+        dueDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+      }
+
+      const formatDate = (d: Date) => d.toISOString().split('T')[0];
+      setForm(p => ({ ...p, leaseEndDate: formatDate(endDate), dueDate: formatDate(dueDate) }));
+    }
+  }, [form.leaseType]);
+
   const [saving, setSaving] = useState(false);
   const submit = async () => {
-    if (!form.ownerName || !form.mobileNumber || !form.vehicleNumber || !form.monthlyRent) return;
+    if (!form.ownerName || !form.mobileNumber || !form.vehicleNumber || !form.monthlyRent || !form.startDate || (form.leaseType === 'Long-term' && !form.leaseEndDate)) {
+      showSnackbar('Please fill all required fields', 'warning');
+      return;
+    }
     setSaving(true);
     try {
       await addGarage({
@@ -29,9 +77,10 @@ function AddGarageModal({ open, onClose }: { open: boolean; onClose: () => void 
         monthlyRent: Number(form.monthlyRent), paymentStatus: 'Due',
         currentDue: Number(form.monthlyRent),
         leaseEndDate: form.leaseEndDate, leaseType: form.leaseType as Garage['leaseType'],
-        startDate: form.startDate,
+        startDate: form.startDate, dueDate: form.dueDate,
       });
       showSnackbar(`${nextNo} added successfully`, 'success');
+      setForm({ ownerName: '', mobileNumber: '', vehicleNumber: '', vehicleType: 'Car', monthlyRent: '', leaseEndDate: '', leaseType: 'Monthly', startDate: '', dueDate: '' });
       onClose();
     } catch { showSnackbar('Failed to add garage', 'error'); }
     finally { setSaving(false); }
@@ -48,8 +97,6 @@ function AddGarageModal({ open, onClose }: { open: boolean; onClose: () => void 
           { label: 'Mobile Number', key: 'mobileNumber', placeholder: '9876543210' },
           { label: 'Vehicle Number', key: 'vehicleNumber', placeholder: 'WB 02 AB 1234' },
           { label: 'Monthly Rent (₹)', key: 'monthlyRent', placeholder: '5000', type: 'number' },
-          { label: 'Start Date', key: 'startDate', type: 'date' },
-          { label: 'Lease End Date', key: 'leaseEndDate', type: 'date' },
         ].map(f => (
           <div key={f.key}>
             <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
@@ -75,6 +122,29 @@ function AddGarageModal({ open, onClose }: { open: boolean; onClose: () => void 
             {['Monthly', 'Yearly', 'Long-term'].map(v => <option key={v}>{v}</option>)}
           </select>
         </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+          <input
+            type="date"
+            value={form.startDate}
+            onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">End Date {form.leaseType === 'Long-term' && '*'}</label>
+          <input
+            type="date"
+            value={form.leaseEndDate}
+            onChange={e => setForm(p => ({ ...p, leaseEndDate: e.target.value }))}
+            readOnly={form.leaseType !== 'Long-term'}
+            className={`w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${form.leaseType !== 'Long-term' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-gray-50'}`}
+          />
+          {form.leaseType !== 'Long-term' && (
+            <p className="text-xs text-gray-400 mt-1">Auto-calculated based on lease type</p>
+          )}
+        </div>
+
         <div className="flex gap-3 pt-2">
           <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
           <button onClick={submit} disabled={saving} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">{saving ? 'Saving...' : 'Add Garage'}</button>
@@ -198,15 +268,13 @@ export default function Garages() {
           <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-sm">
             <Plus size={16} /> Add Garage
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">
+          {/* Edit/Delete buttons hidden for now */}
+          {/* <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">
             <PenLine size={15} /> Edit
           </button>
           <button className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 bg-red-50 text-sm font-medium rounded-xl hover:bg-red-100 transition-colors">
             <Trash2 size={15} /> Delete
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">
-            <RefreshCw size={15} /> Refresh
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -258,7 +326,7 @@ export default function Garages() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              {['Garage No.', 'Owner Name', 'Mobile Number', 'Vehicle Number', 'Monthly Rent (₹)', 'Payment Status', 'Current Due (₹)', 'Lease End Date', 'Action'].map(h => (
+              {['Garage No.', 'Owner Name', 'Mobile Number', 'Vehicle Number', 'Monthly Rent (₹)', 'End Date', 'Payment Status', 'Action'].map(h => (
                 <th key={h} className={`px-4 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide ${h === 'Action' ? 'text-right' : 'text-left'}`}>{h}</th>
               ))}
             </tr>
@@ -271,16 +339,13 @@ export default function Garages() {
                 <td className="px-4 py-4 text-gray-600">{garage.mobileNumber}</td>
                 <td className="px-4 py-4 text-gray-600">{garage.vehicleNumber}</td>
                 <td className="px-4 py-4 text-gray-700">₹ {garage.monthlyRent.toLocaleString('en-IN')}</td>
+                <td className="px-4 py-4 text-gray-600">{garage.leaseEndDate || '—'}</td>
                 <td className="px-4 py-4">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${garage.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${garage.paymentStatus === 'Paid' ? 'bg-green-500' : 'bg-red-500'}`} />
                     {garage.paymentStatus}
                   </span>
                 </td>
-                <td className={`px-4 py-4 font-semibold ${garage.currentDue > 0 ? 'text-red-500' : 'text-gray-700'}`}>
-                  ₹ {garage.currentDue.toLocaleString('en-IN')}
-                </td>
-                <td className="px-4 py-4 text-gray-600">{garage.leaseEndDate}</td>
                 <td className="px-4 py-4">
                   <div className="flex items-center justify-end gap-1">
                     {garage.paymentStatus === 'Due' && garage.currentDue > 0 && (
@@ -312,7 +377,7 @@ export default function Garages() {
               </tr>
             ))}
             {paginated.length === 0 && (
-              <tr><td colSpan={9} className="px-5 py-10 text-center text-gray-400 text-sm">No garages found</td></tr>
+              <tr><td colSpan={8} className="px-5 py-10 text-center text-gray-400 text-sm">No garages found</td></tr>
             )}
           </tbody>
         </table>

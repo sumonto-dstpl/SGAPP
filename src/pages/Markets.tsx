@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, RefreshCw, Search, Eye, MoreHorizontal, IndianRupee, Store, Wallet, FileWarning, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Search, MoreHorizontal, IndianRupee, Store, Wallet, FileWarning, X, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { useData } from '../store/DataContext';
 import { Market } from '../types';
 import Modal from '../components/Modal';
@@ -151,11 +151,12 @@ export default function Markets({ onViewMarket }: Props) {
           <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-sm">
             <Plus size={16} /> Add Market
           </button>
-          {selected.length > 0 && (
+          {/* Delete button hidden for now */}
+          {/* {selected.length > 0 && (
             <button onClick={handleDeleteSelected} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-xl hover:bg-red-100 transition-colors border border-red-200">
               <Trash2 size={16} /> Delete ({selected.length})
             </button>
-          )}
+          )} */}
           <button onClick={() => setSearch('')} className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">
             <RefreshCw size={15} /> Refresh
           </button>
@@ -210,14 +211,22 @@ export default function Markets({ onViewMarket }: Props) {
           </thead>
           <tbody className="divide-y divide-gray-50">
             {paginated.map(market => (
-              <tr key={market.id} className="hover:bg-gray-50/60 transition-colors group">
+              <tr
+                key={market.id}
+                onClick={() => onViewMarket(market)}
+                className="hover:bg-gray-50/60 transition-colors group cursor-pointer"
+              >
                 <td className="px-5 py-4 font-semibold text-gray-800">{market.name}</td>
                 <td className="px-5 py-4 text-gray-600">{market.phoneNumber}</td>
                 <td className="px-5 py-4 text-gray-700">₹ {market.monthlyRent.toLocaleString('en-IN')}</td>
-                <td className="px-5 py-4">
+                <td className="px-5 py-4" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2">
-                    <button onClick={() => onViewMarket(market)} className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors" title="View">
-                      <Eye size={16} />
+                    <button
+                      onClick={() => { setEditMarket(market); }}
+                      className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <Pencil size={16} />
                     </button>
                     <div className="relative">
                       <button

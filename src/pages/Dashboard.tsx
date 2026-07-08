@@ -4,12 +4,16 @@ import { Page } from '../types';
 
 const fmt = (n: number) => `₹ ${n.toLocaleString('en-IN')}`;
 
-function StatCard({ label, value, sub, icon, color, textColor }: {
+function StatCard({ label, value, sub, icon, color, textColor, onClick }: {
   label: string; value: string | number; sub: string;
   icon: React.ReactNode; color: string; textColor: string;
+  onClick?: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow">
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow ${onClick ? 'cursor-pointer hover:border-blue-200' : ''}`}
+    >
       <div className={`${color} w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0`}>
         {icon}
       </div>
@@ -57,7 +61,7 @@ export default function Dashboard({ onNavigate }: Props) {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Mullick Fintech</h1>
         <p className="text-sm text-gray-500 mt-0.5">Welcome back, Admin!</p>
       </div>
 
@@ -68,12 +72,14 @@ export default function Dashboard({ onNavigate }: Props) {
           sub={`Active Markets ${markets.length}`}
           icon={<Store size={22} className="text-blue-600" />}
           color="bg-blue-50" textColor="text-blue-700"
+          onClick={() => onNavigate('markets')}
         />
         <StatCard
           label="Total Garages" value={garages.length}
           sub={`Active Garages ${garages.length}`}
           icon={<Car size={22} className="text-green-600" />}
           color="bg-green-50" textColor="text-green-700"
+          onClick={() => onNavigate('garages')}
         />
         <StatCard
           label="Total Monthly Rent" value={fmt(totalMonthlyRent)}

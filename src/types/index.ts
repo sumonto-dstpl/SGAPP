@@ -34,6 +34,7 @@ export interface Garage {
   paymentStatus: 'Paid' | 'Due';
   currentDue: number;
   leaseEndDate: string;
+  dueDate: string;
   leaseType: 'Monthly' | 'Yearly' | 'Long-term';
   address?: string;
   startDate: string;

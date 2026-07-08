@@ -82,8 +82,8 @@ export default function Settings() {
           </div>
         </Section>
 
-        {/* Notifications */}
-        <Section title="Notification Settings" icon={<Bell size={17} />}>
+        {/* Notifications - Disabled for now */}
+        {/* <Section title="Notification Settings" icon={<Bell size={17} />}>
           <div className="space-y-0">
             {[
               { label: 'Email Notifications', key: 'email' as const },
@@ -96,7 +96,7 @@ export default function Settings() {
               </Field>
             ))}
           </div>
-        </Section>
+        </Section> */}
 
         {/* System */}
         <Section title="System Settings" icon={<Globe size={17} />}>

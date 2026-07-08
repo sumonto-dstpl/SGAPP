@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import {
   LayoutDashboard, Store, Car, Settings, Cloud, LogOut,
-  Bell, ChevronDown, Calendar, Menu, Building2, ShoppingBag
+  Bell, ChevronDown, Calendar, Menu, Building2
 } from 'lucide-react';
 import { Page } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +12,8 @@ const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
   { id: 'markets',   label: 'Markets',   icon: <Store size={20} /> },
   { id: 'garages',   label: 'Garages',   icon: <Car size={20} /> },
-  { id: 'shops',     label: 'Shops',     icon: <ShoppingBag size={20} /> },
+  // Shops screen hidden for now
+  // { id: 'shops',     label: 'Shops',     icon: <ShoppingBag size={20} /> },
   { id: 'settings',  label: 'Settings',  icon: <Settings size={20} /> },
   { id: 'backup',    label: 'Backup',    icon: <Cloud size={20} /> },
 ];

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  ArrowLeft, Plus, Trash2, RefreshCw, Search, Eye, MoreHorizontal, X,
+  ArrowLeft, Plus, Trash2, RefreshCw, Search, Eye, MoreHorizontal, X, Pencil,
   Store, IndianRupee, Wallet, FileWarning, ChevronLeft, ChevronRight, Banknote
 } from 'lucide-react';
 import { Market, Shop } from '../types';
@@ -32,6 +32,33 @@ function AddShopModal({ open, onClose, market }: { open: boolean; onClose: () =>
 
   const set = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
 
+  // Autofill end date and due date based on start date
+  useEffect(() => {
+    if (form.startDate) {
+      const startDate = new Date(form.startDate);
+      let endDate: Date;
+      let dueDate: Date;
+
+      if (shopType === 'Rented') {
+        // Monthly: end date = one day before same date next month, due date = same date next month
+        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate() - 1);
+        dueDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate());
+      } else {
+        // Yearly: end date = one day before same date next year, due date = same date next year
+        endDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate() - 1);
+        dueDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+      }
+
+      const formatDate = (d: Date) => d.toISOString().split('T')[0];
+      setForm(p => ({ ...p, endDate: formatDate(endDate), dueDate: formatDate(dueDate) }));
+    }
+  }, [form.startDate, shopType]);
+
+  // Reset dates when shop type changes
+  useEffect(() => {
+    setForm(p => ({ ...p, startDate: '', endDate: '', dueDate: '' }));
+  }, [shopType]);
+
   const submit = async () => {
     if (!form.shopName || !form.tenantName || !form.phoneNumber || !form.monthlyRent) {
       showSnackbar('Please fill all required fields', 'warning');
@@ -52,6 +79,8 @@ function AddShopModal({ open, onClose, market }: { open: boolean; onClose: () =>
     finally { setSaving(false); }
   };
 
+  const rentLabel = shopType === 'Rented' ? 'Monthly Rent (₹) *' : 'Yearly Rent (₹) *';
+
   return (
     <Modal open={open} onClose={onClose} title="Add New Shop">
       <div className="space-y-4">
@@ -69,10 +98,7 @@ function AddShopModal({ open, onClose, market }: { open: boolean; onClose: () =>
           { label: 'Shop Name *',        key: 'shopName',     placeholder: 'e.g. Shop A-09' },
           { label: 'Tenant Name *',      key: 'tenantName',   placeholder: 'Mr. Kumar' },
           { label: 'Phone Number *',     key: 'phoneNumber',  placeholder: '9876543210' },
-          { label: 'Monthly Rent (₹) *', key: 'monthlyRent',  placeholder: '5000', type: 'number' },
-          { label: 'Due Date',           key: 'dueDate',      type: 'date' },
-          { label: 'Start Date',         key: 'startDate',    type: 'date' },
-          { label: 'End Date',           key: 'endDate',      type: 'date' },
+          { label: rentLabel,            key: 'monthlyRent',  placeholder: shopType === 'Rented' ? '5000' : '60000', type: 'number' },
         ].map(f => (
           <div key={f.key}>
             <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
@@ -85,11 +111,109 @@ function AddShopModal({ open, onClose, market }: { open: boolean; onClose: () =>
           </div>
         ))}
 
+        {/* Start Date - only editable date */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+          <input
+            type="date"
+            value={form.startDate}
+            onChange={e => set('startDate', e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+          />
+        </div>
+
+        {/* End Date - auto-filled, read-only */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+          <input
+            type="date"
+            value={form.endDate}
+            readOnly
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
+          />
+        </div>
+
+        {/* Due Date - auto-filled, read-only */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+          <input
+            type="date"
+            value={form.dueDate}
+            readOnly
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
+          />
+        </div>
+
         <div className="flex gap-3 pt-2">
           <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
           <button onClick={submit} disabled={saving}
             className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-60">
             {saving ? 'Saving...' : 'Add Shop'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Edit Shop Modal ───────────────────────────────────────────────────────────
+
+function EditShopModal({ shop, onClose }: { shop: Shop; onClose: () => void }) {
+  const { updateShop } = useData();
+  const { showSnackbar } = useSnackbar();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    shopName: shop.shopName,
+    tenantName: shop.tenantName,
+    phoneNumber: shop.phoneNumber,
+    monthlyRent: String(shop.monthlyRent),
+  });
+
+  const set = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  const submit = async () => {
+    if (!form.shopName || !form.tenantName || !form.phoneNumber || !form.monthlyRent) {
+      showSnackbar('Please fill all required fields', 'warning');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateShop(shop.id, {
+        shopName: form.shopName,
+        tenantName: form.tenantName,
+        phoneNumber: form.phoneNumber,
+        monthlyRent: Number(form.monthlyRent),
+      });
+      showSnackbar('Shop updated successfully', 'success');
+      onClose();
+    } catch { showSnackbar('Failed to update shop', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open={true} onClose={onClose} title="Edit Shop">
+      <div className="space-y-4">
+        {[
+          { label: 'Shop Name *', key: 'shopName', placeholder: 'e.g. Shop A-09' },
+          { label: 'Tenant Name *', key: 'tenantName', placeholder: 'Mr. Kumar' },
+          { label: 'Phone Number *', key: 'phoneNumber', placeholder: '9876543210' },
+          { label: 'Monthly Rent (₹) *', key: 'monthlyRent', placeholder: '5000', type: 'number' },
+        ].map(f => (
+          <div key={f.key}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
+            <input
+              type={f.type ?? 'text'} placeholder={f.placeholder}
+              value={form[f.key as keyof typeof form]}
+              onChange={e => set(f.key as keyof typeof form, e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+            />
+          </div>
+        ))}
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={submit} disabled={saving}
+            className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-60">
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>
@@ -112,6 +236,7 @@ export default function MarketDetail({ market, onBack }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [selected, setSelected] = useState<Shop | null>(null);
+  const [editShop, setEditShop] = useState<Shop | null>(null);
 
   const marketShops = shops.filter(s => s.marketId === market.id);
   const tabShops    = marketShops.filter(s => s.shopType === tab);
@@ -297,6 +422,13 @@ export default function MarketDetail({ market, onBack }: Props) {
                         className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors">
                         <Eye size={16} />
                       </button>
+                      <button
+                        onClick={() => { setEditShop(shop); setMenuOpen(null); }}
+                        className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
+                        title="Edit"
+                      >
+                        <Pencil size={16} />
+                      </button>
                       <div className="relative">
                         <button onClick={() => setMenuOpen(menuOpen === shop.id ? null : shop.id)}
                           className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
@@ -307,6 +439,10 @@ export default function MarketDetail({ market, onBack }: Props) {
                             <button onClick={() => { setSelected(shop); setMenuOpen(null); }}
                               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                               <Eye size={14} /> View
+                            </button>
+                            <button onClick={() => { setEditShop(shop); setMenuOpen(null); }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                              <Pencil size={14} /> Edit
                             </button>
                             <button onClick={() => handleDelete(shop.id)}
                               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
@@ -350,6 +486,7 @@ export default function MarketDetail({ market, onBack }: Props) {
 
       {addOpen  && <AddShopModal open={addOpen} onClose={() => setAddOpen(false)} market={market} />}
       {selected && <ShopDetailModal shop={selected} onClose={() => setSelected(null)} />}
+      {editShop && <EditShopModal shop={editShop} onClose={() => setEditShop(null)} />}
 
       {/* Click outside to close menu */}
       {menuOpen && <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />}
