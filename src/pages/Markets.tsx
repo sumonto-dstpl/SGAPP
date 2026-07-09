@@ -214,22 +214,22 @@ export default function Markets({ onViewMarket }: Props) {
               <tr
                 key={market.id}
                 onClick={() => onViewMarket(market)}
-                className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                className="hover:bg-gray-50/60 transition-colors group cursor-pointer"
               >
                 <td className="px-5 py-4 font-semibold text-gray-800">{market.name}</td>
                 <td className="px-5 py-4 text-gray-600">{market.phoneNumber}</td>
                 <td className="px-5 py-4 text-gray-700">₹ {market.monthlyRent.toLocaleString('en-IN')}</td>
-                <td className="px-5 py-4" >
+                <td className="px-5 py-4" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2">
-                    {/* <button
+                    <button
                       onClick={() => { setEditMarket(market); }}
                       className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Edit"
                     >
                       <Pencil size={16} />
-                    </button> */}
-                    <div className="relative" onClick={e => e.stopPropagation()}>
-                      <button 
+                    </button>
+                    <div className="relative">
+                      <button
                         onClick={() => setMenuOpen(menuOpen === market.id ? null : market.id)}
                         className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                       >

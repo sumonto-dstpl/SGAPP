@@ -37,27 +37,12 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 export default function Settings() {
-  const [profile, setProfile] = useState(() => {
-    const saved = localStorage.getItem('mullick_settings_profile');
-    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
-    return { name: 'Admin', email: 'admin@mullickfintech.com', phone: '9876543210', org: 'Mullick Fintech' };
-  });
-  const [notifications, setNotifications] = useState(() => {
-    const saved = localStorage.getItem('mullick_settings_notifications');
-    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
-    return { email: true, sms: false, dueReminder: true, backupAlert: true };
-  });
-  const [system, setSystem] = useState(() => {
-    const saved = localStorage.getItem('mullick_settings_system');
-    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
-    return { currency: 'INR (₹)', language: 'English', timezone: 'Asia/Kolkata (IST)', dateFormat: 'DD-MM-YYYY' };
-  });
+  const [profile, setProfile] = useState({ name: 'Admin', email: 'admin@pgmsystem.com', phone: '9876543210', org: 'Property & Garage Mgmt.' });
+  const [notifications, setNotifications] = useState({ email: true, sms: false, dueReminder: true, backupAlert: true });
+  const [system, setSystem] = useState({ currency: 'INR (₹)', language: 'English', timezone: 'Asia/Kolkata (IST)', dateFormat: 'DD-MM-YYYY' });
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
-    localStorage.setItem('mullick_settings_profile', JSON.stringify(profile));
-    localStorage.setItem('mullick_settings_notifications', JSON.stringify(notifications));
-    localStorage.setItem('mullick_settings_system', JSON.stringify(system));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -98,31 +83,20 @@ export default function Settings() {
         </Section>
 
         {/* Notifications - Disabled for now */}
-        <Section title="Notification Settings" icon={<Bell size={17} />}>
-  <div
-    className="space-y-0 pointer-events-none opacity-20 select-none"
-    aria-disabled="true"
-  >
-    {[
-      { label: 'Email Notifications', key: 'email' as const },
-      { label: 'SMS Notifications', key: 'sms' as const },
-      { label: 'Due Date Reminders', key: 'dueReminder' as const },
-      { label: 'Backup Alerts', key: 'backupAlert' as const },
-    ].map(f => (
-      <Field key={f.key} label={f.label}>
-        <Toggle
-          checked={notifications[f.key]}
-          onChange={v =>
-            setNotifications(p => ({
-              ...p,
-              [f.key]: v,
-            }))
-          }
-        />
-      </Field>
-    ))}
-  </div>
-</Section>
+        {/* <Section title="Notification Settings" icon={<Bell size={17} />}>
+          <div className="space-y-0">
+            {[
+              { label: 'Email Notifications', key: 'email' as const },
+              { label: 'SMS Notifications', key: 'sms' as const },
+              { label: 'Due Date Reminders', key: 'dueReminder' as const },
+              { label: 'Backup Alerts', key: 'backupAlert' as const },
+            ].map(f => (
+              <Field key={f.key} label={f.label}>
+                <Toggle checked={notifications[f.key]} onChange={v => setNotifications(p => ({ ...p, [f.key]: v }))} />
+              </Field>
+            ))}
+          </div>
+        </Section> */}
 
         {/* System */}
         <Section title="System Settings" icon={<Globe size={17} />}>
@@ -180,14 +154,14 @@ export default function Settings() {
       </div>
 
       {/* App Info */}
-      {/* <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-50">
           <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600"><Database size={17} /></div>
           <h2 className="text-base font-semibold text-gray-800">Application Information</h2>
         </div>
         <div className="grid grid-cols-4 gap-6">
           {[
-            { label: 'Application Name', value: 'Mullick Fintech' },
+            { label: 'Application Name', value: 'Property & Garage Management System' },
             { label: 'Version', value: '1.0.0' },
             { label: 'Database', value: 'SQLite (Local)' },
             { label: 'Built With', value: 'React + Tauri' },
@@ -198,7 +172,7 @@ export default function Settings() {
             </div>
           ))}
         </div>
-      </div> */}
+      </div>
     </div>
   );
 }

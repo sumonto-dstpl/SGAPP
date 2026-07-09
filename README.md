@@ -1,4 +1,4 @@
-# Mullick Fintech
+# Property & Garage Management System (PGMS)
 
 A comprehensive offline desktop application for managing markets, rented shops, and garages. Built with React, Tauri, and SQLite.
 
