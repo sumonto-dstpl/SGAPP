@@ -83,20 +83,31 @@ export default function Settings() {
         </Section>
 
         {/* Notifications - Disabled for now */}
-        {/* <Section title="Notification Settings" icon={<Bell size={17} />}>
-          <div className="space-y-0">
-            {[
-              { label: 'Email Notifications', key: 'email' as const },
-              { label: 'SMS Notifications', key: 'sms' as const },
-              { label: 'Due Date Reminders', key: 'dueReminder' as const },
-              { label: 'Backup Alerts', key: 'backupAlert' as const },
-            ].map(f => (
-              <Field key={f.key} label={f.label}>
-                <Toggle checked={notifications[f.key]} onChange={v => setNotifications(p => ({ ...p, [f.key]: v }))} />
-              </Field>
-            ))}
-          </div>
-        </Section> */}
+        <Section title="Notification Settings" icon={<Bell size={17} />}>
+  <div
+    className="space-y-0 pointer-events-none opacity-20 select-none"
+    aria-disabled="true"
+  >
+    {[
+      { label: 'Email Notifications', key: 'email' as const },
+      { label: 'SMS Notifications', key: 'sms' as const },
+      { label: 'Due Date Reminders', key: 'dueReminder' as const },
+      { label: 'Backup Alerts', key: 'backupAlert' as const },
+    ].map(f => (
+      <Field key={f.key} label={f.label}>
+        <Toggle
+          checked={notifications[f.key]}
+          onChange={v =>
+            setNotifications(p => ({
+              ...p,
+              [f.key]: v,
+            }))
+          }
+        />
+      </Field>
+    ))}
+  </div>
+</Section>
 
         {/* System */}
         <Section title="System Settings" icon={<Globe size={17} />}>

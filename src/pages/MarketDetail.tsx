@@ -310,10 +310,10 @@ export default function MarketDetail({ market, onBack }: Props) {
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
             <Plus size={16} /> Add Shop
           </button>
-          <button onClick={handleDeleteMarket}
+          {/* <button onClick={handleDeleteMarket}
             className="flex items-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors">
             <Trash2 size={16} /> Delete
-          </button>
+          </button> */}
           <button onClick={handleRefresh}
             className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">
             <RefreshCw size={16} /> Refresh
@@ -383,7 +383,7 @@ export default function MarketDetail({ market, onBack }: Props) {
                 <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Current Due (₹)</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Due Date</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Payment Status</th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Action</th>
+                <th className="text-right    px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -406,7 +406,7 @@ export default function MarketDetail({ market, onBack }: Props) {
                     </span>
                   </td>
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-end gap-1">
                       {shop.paymentStatus === 'Due' && (
                         <button
                           onClick={() => handleCollect(shop)}
@@ -418,7 +418,7 @@ export default function MarketDetail({ market, onBack }: Props) {
                           {collecting === shop.id ? '...' : `Collect`}
                         </button>
                       )}
-                      <button onClick={() => setSelected(shop)}
+                      {/* <button onClick={() => setSelected(shop)}
                         className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors">
                         <Eye size={16} />
                       </button>
@@ -428,7 +428,7 @@ export default function MarketDetail({ market, onBack }: Props) {
                         title="Edit"
                       >
                         <Pencil size={16} />
-                      </button>
+                      </button> */}
                       <div className="relative">
                         <button onClick={() => setMenuOpen(menuOpen === shop.id ? null : shop.id)}
                           className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">

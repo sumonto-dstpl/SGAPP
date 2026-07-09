@@ -1,7 +1,7 @@
 [package]
-name = "pgms"
+name = "mullickfintech"
 version = "0.1.0"
-description = "Property & Garage Management System"
+description = "Mullick Fintech"
 authors = []
 edition = "2021"
 
