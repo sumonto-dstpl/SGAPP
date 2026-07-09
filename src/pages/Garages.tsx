@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, RefreshCw, Search, Eye, MoreHorizontal, Car, IndianRupee, Wallet, FileWarning, X, ChevronLeft, ChevronRight, Banknote } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Search, MoreHorizontal, Car, IndianRupee, Wallet, FileWarning, X, ChevronLeft, ChevronRight, Banknote } from 'lucide-react';
 import { useData } from '../store/DataContext';
 import { Garage } from '../types';
 import Modal from '../components/Modal';
@@ -205,6 +205,105 @@ function GarageDetailModal({ garage, onClose }: { garage: Garage; onClose: () =>
   );
 }
 
+function EditGarageModal({ garage, onClose }: { garage: Garage; onClose: () => void }) {
+  const { updateGarage } = useData();
+  const { showSnackbar } = useSnackbar();
+  const [form, setForm] = useState({
+    ownerName: garage.ownerName,
+    mobileNumber: garage.mobileNumber,
+    vehicleNumber: garage.vehicleNumber,
+    vehicleType: garage.vehicleType,
+    monthlyRent: String(garage.monthlyRent),
+    leaseType: garage.leaseType,
+    startDate: garage.startDate,
+    leaseEndDate: garage.leaseEndDate,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!form.ownerName || !form.mobileNumber || !form.vehicleNumber || !form.monthlyRent || !form.startDate || (form.leaseType === 'Long-term' && !form.leaseEndDate)) {
+      showSnackbar('Please fill all required fields', 'warning');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateGarage(garage.id, {
+        ownerName: form.ownerName,
+        mobileNumber: form.mobileNumber,
+        vehicleNumber: form.vehicleNumber,
+        vehicleType: form.vehicleType as Garage['vehicleType'],
+        monthlyRent: Number(form.monthlyRent),
+        leaseType: form.leaseType as Garage['leaseType'],
+        startDate: form.startDate,
+        leaseEndDate: form.leaseEndDate,
+      });
+      showSnackbar(`${garage.garageNo} updated successfully`, 'success');
+      onClose();
+    } catch { showSnackbar('Failed to update garage', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open={true} onClose={onClose} title={`Edit ${garage.garageNo}`} width="max-w-lg">
+      <div className="space-y-4">
+        {[
+          { label: 'Owner Name', key: 'ownerName', placeholder: 'Mr. Roy' },
+          { label: 'Mobile Number', key: 'mobileNumber', placeholder: '9876543210' },
+          { label: 'Vehicle Number', key: 'vehicleNumber', placeholder: 'WB 02 AB 1234' },
+          { label: 'Monthly Rent (₹)', key: 'monthlyRent', placeholder: '5000', type: 'number' },
+        ].map(f => (
+          <div key={f.key}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
+            <input
+              type={f.type || 'text'} placeholder={f.placeholder}
+              value={form[f.key as keyof typeof form]}
+              onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        ))}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+          <select value={form.vehicleType} onChange={e => setForm(p => ({ ...p, vehicleType: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            {['Car', 'Bike', 'Truck', 'Other'].map(v => <option key={v}>{v}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Lease Type</label>
+          <select value={form.leaseType} onChange={e => setForm(p => ({ ...p, leaseType: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            {['Monthly', 'Yearly', 'Long-term'].map(v => <option key={v}>{v}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+          <input
+            type="date"
+            value={form.startDate}
+            onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">End Date {form.leaseType === 'Long-term' && '*'}</label>
+          <input
+            type="date"
+            value={form.leaseEndDate}
+            onChange={e => setForm(p => ({ ...p, leaseEndDate: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+          />
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+          <button onClick={submit} disabled={saving} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">{saving ? 'Saving...' : 'Save Changes'}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export default function Garages() {
   const { garages, deleteGarage, updateGarage, addPayment } = useData();
   const { showSnackbar } = useSnackbar();
@@ -215,6 +314,7 @@ export default function Garages() {
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
   const [viewGarage, setViewGarage] = useState<Garage | null>(null);
+  const [editGarage, setEditGarage] = useState<Garage | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [collecting, setCollecting] = useState<string | null>(null);
 
@@ -358,9 +458,6 @@ export default function Garages() {
                         {collecting === garage.id ? '...' : 'Collect'}
                       </button>
                     )}
-                    <button onClick={() => setViewGarage(garage)} className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
-                      <Eye size={15} />
-                    </button>
                     <div className="relative">
                       <button onClick={() => setMenuOpen(menuOpen === garage.id ? null : garage.id)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                         <MoreHorizontal size={15} />
@@ -368,6 +465,7 @@ export default function Garages() {
                       {menuOpen === garage.id && (
                         <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden min-w-[140px]">
                           <button onClick={() => { setViewGarage(garage); setMenuOpen(null); }} className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50">View</button>
+                          <button onClick={() => { setEditGarage(garage); setMenuOpen(null); }} className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50">Edit</button>
                           <button onClick={() => handleDelete(garage.id)} className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50">Delete</button>
                         </div>
                       )}
@@ -403,6 +501,7 @@ export default function Garages() {
 
       <AddGarageModal open={showAdd} onClose={() => setShowAdd(false)} />
       {viewGarage && <GarageDetailModal garage={viewGarage} onClose={() => setViewGarage(null)} />}
+      {editGarage && <EditGarageModal garage={editGarage} onClose={() => setEditGarage(null)} />}
       {menuOpen && <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />}
     </div>
   );

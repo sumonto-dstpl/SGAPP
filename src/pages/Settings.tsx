@@ -37,12 +37,27 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 export default function Settings() {
-  const [profile, setProfile] = useState({ name: 'Admin', email: 'admin@pgmsystem.com', phone: '9876543210', org: 'Property & Garage Mgmt.' });
-  const [notifications, setNotifications] = useState({ email: true, sms: false, dueReminder: true, backupAlert: true });
-  const [system, setSystem] = useState({ currency: 'INR (₹)', language: 'English', timezone: 'Asia/Kolkata (IST)', dateFormat: 'DD-MM-YYYY' });
+  const [profile, setProfile] = useState(() => {
+    const saved = localStorage.getItem('mullick_settings_profile');
+    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+    return { name: 'Admin', email: 'admin@mullickfintech.com', phone: '9876543210', org: 'Mullick Fintech' };
+  });
+  const [notifications, setNotifications] = useState(() => {
+    const saved = localStorage.getItem('mullick_settings_notifications');
+    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+    return { email: true, sms: false, dueReminder: true, backupAlert: true };
+  });
+  const [system, setSystem] = useState(() => {
+    const saved = localStorage.getItem('mullick_settings_system');
+    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+    return { currency: 'INR (₹)', language: 'English', timezone: 'Asia/Kolkata (IST)', dateFormat: 'DD-MM-YYYY' };
+  });
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
+    localStorage.setItem('mullick_settings_profile', JSON.stringify(profile));
+    localStorage.setItem('mullick_settings_notifications', JSON.stringify(notifications));
+    localStorage.setItem('mullick_settings_system', JSON.stringify(system));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -172,7 +187,7 @@ export default function Settings() {
         </div>
         <div className="grid grid-cols-4 gap-6">
           {[
-            { label: 'Application Name', value: 'Property & Garage Management System' },
+            { label: 'Application Name', value: 'Mullick Fintech' },
             { label: 'Version', value: '1.0.0' },
             { label: 'Database', value: 'SQLite (Local)' },
             { label: 'Built With', value: 'React + Tauri' },

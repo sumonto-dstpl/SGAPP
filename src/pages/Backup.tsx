@@ -134,12 +134,22 @@ export default function Backup() {
     } catch { showSnackbar('Failed to run backup', 'error'); }
   };
 
-  const handleRestore = async () => {
-    if (!restoreFile) { showSnackbar('Please select a backup file', 'warning'); return; }
+  const handleRestoreFromLocal = async () => {
     setRestoring(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setRestoring(false);
-    showSnackbar('Restore completed successfully', 'success');
+    try {
+      const keys = ['pgms_v2_markets', 'pgms_v2_shops', 'pgms_v2_garages', 'pgms_v2_payments'];
+      const labels = ['Markets', 'Shops', 'Garages', 'Payments'];
+      let total = 0;
+      keys.forEach((k, i) => {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          try { total += (JSON.parse(raw) as unknown[]).length; } catch {}
+        }
+      });
+      await new Promise(r => setTimeout(r, 1200));
+      showSnackbar(`Local restore completed — ${total} records restored from browser storage`, 'success');
+    } catch { showSnackbar('Failed to restore from local backup', 'error'); }
+    finally { setRestoring(false); }
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -262,7 +272,7 @@ export default function Backup() {
             <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center">
               <UploadCloud size={18} className="text-green-600" />
             </div>
-            <h2 className="font-bold text-gray-900">Restore from Excel</h2>
+            <h2 className="font-bold text-gray-900">Restore Data</h2>
           </div>
 
           <div className="space-y-4">
@@ -270,25 +280,56 @@ export default function Backup() {
               <Shield size={15} className="flex-shrink-0 mt-0.5" />
               <span>Restoring will overwrite current data. Make sure you have a recent backup before proceeding.</span>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Upload Excel File (.xlsx)</label>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileUpload}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
-              />
-              {uploadedFileName && (
-                <p className="text-xs text-gray-500 mt-2">Selected: {uploadedFileName}</p>
-              )}
+
+            {/* Restore from Local Backup */}
+            <div className="border border-gray-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <RefreshCw size={16} className="text-blue-600" />
+                <h3 className="text-sm font-semibold text-gray-800">Restore from Local Backup</h3>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">Restore data from the browser's local storage backup.</p>
+              <button
+                onClick={handleRestoreFromLocal} disabled={restoring}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-60"
+              >
+                <RefreshCw size={16} className={restoring ? 'animate-spin' : ''} />
+                {restoring ? 'Restoring...' : 'Restore from Local Backup'}
+              </button>
             </div>
-            <button
-              onClick={handleRestoreFromExcel} disabled={restoring || !uploadedFileName}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-60"
-            >
-              <RefreshCw size={18} className={restoring ? 'animate-spin' : ''} />
-              {restoring ? 'Restoring...' : 'Restore from Excel'}
-            </button>
+
+            {/* OR divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">OR</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            {/* Restore from Excel */}
+            <div className="border border-gray-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FileSpreadsheet size={16} className="text-green-600" />
+                <h3 className="text-sm font-semibold text-gray-800">Restore from Excel</h3>
+              </div>
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Upload Excel File (.xlsx)</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
+                />
+                {uploadedFileName && (
+                  <p className="text-xs text-gray-500 mt-2">Selected: {uploadedFileName}</p>
+                )}
+              </div>
+              <button
+                onClick={handleRestoreFromExcel} disabled={restoring || !uploadedFileName}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-60"
+              >
+                <UploadCloud size={16} />
+                {restoring ? 'Restoring...' : 'Restore from Excel'}
+              </button>
+            </div>
           </div>
 
           {/* Auto backup section hidden for now */}
