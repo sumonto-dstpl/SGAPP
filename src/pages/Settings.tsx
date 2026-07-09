@@ -165,7 +165,7 @@ export default function Settings() {
       </div>
 
       {/* App Info */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      {/* <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-50">
           <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600"><Database size={17} /></div>
           <h2 className="text-base font-semibold text-gray-800">Application Information</h2>
@@ -183,7 +183,7 @@ export default function Settings() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

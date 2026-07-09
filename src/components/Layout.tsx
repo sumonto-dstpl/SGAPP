@@ -124,7 +124,7 @@ export default function Layout({ children, currentPage, onNavigate }: Props) {
           <div className="flex items-center gap-3">
             <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-500">
               <Bell size={18} />
-              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">3</span>
+              {/* <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">5</span> */}
             </button>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
               <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
