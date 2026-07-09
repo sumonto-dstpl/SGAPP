@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Cloud, Download, Trash2, RefreshCw, UploadCloud, FileSpreadsheet,
-  Clock, Shield, CheckCircle, ChevronLeft, ChevronRight, Info, Play, Pause
+  Shield, ChevronLeft, ChevronRight, Info
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useData } from '../store/DataContext';
@@ -75,6 +75,7 @@ export default function Backup() {
   const [page, setPage] = useState(1);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [uploadedFileData, setUploadedFileData] = useState<ArrayBuffer | null>(null);
+  const [selectedBackupId, setSelectedBackupId] = useState<string>('');
 
   // Auto backup state - hidden for now
   /*
@@ -134,14 +135,6 @@ export default function Backup() {
     } catch { showSnackbar('Failed to run backup', 'error'); }
   };
 
-  const handleRestore = async () => {
-    if (!restoreFile) { showSnackbar('Please select a backup file', 'warning'); return; }
-    setRestoring(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setRestoring(false);
-    showSnackbar('Restore completed successfully', 'success');
-  };
-
   const handleDelete = async (id: string, name: string) => {
     try {
       await deleteBackup(id);
@@ -182,6 +175,16 @@ export default function Backup() {
       showSnackbar('Failed to read Excel file. Please ensure it is a valid .xlsx file.', 'error');
     }
     setRestoring(false);
+  };
+
+  const handleRestoreFromHistory = async (id: string, name: string) => {
+    if (!window.confirm(`Restore data from backup "${name}"? This will overwrite your current data.`)) return;
+    setRestoring(true);
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      showSnackbar(`Restore from "${name}" completed successfully`, 'success');
+    } catch { showSnackbar('Failed to restore from backup', 'error'); }
+    finally { setRestoring(false); }
   };
 
   return (
@@ -262,7 +265,7 @@ export default function Backup() {
             <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center">
               <UploadCloud size={18} className="text-green-600" />
             </div>
-            <h2 className="font-bold text-gray-900">Restore from Excel</h2>
+            <h2 className="font-bold text-gray-900">Restore Data</h2>
           </div>
 
           <div className="space-y-4">
@@ -270,8 +273,44 @@ export default function Backup() {
               <Shield size={15} className="flex-shrink-0 mt-0.5" />
               <span>Restoring will overwrite current data. Make sure you have a recent backup before proceeding.</span>
             </div>
+
+            {/* Restore from backup history */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Upload Excel File (.xlsx)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Restore from Backup History</label>
+              <select
+                value={selectedBackupId}
+                onChange={e => setSelectedBackupId(e.target.value)}
+                disabled={backups.length === 0 || restoring}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 disabled:opacity-60"
+              >
+                <option value="">{backups.length === 0 ? 'No backups available' : 'Select a backup...'}</option>
+                {backups.map(b => (
+                  <option key={b.id} value={b.id}>{b.name} — {b.createdAt}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={() => {
+                const b = backups.find(x => x.id === selectedBackupId);
+                if (b) handleRestoreFromHistory(b.id, b.name);
+              }}
+              disabled={restoring || !selectedBackupId}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-60"
+            >
+              <RefreshCw size={18} className={restoring ? 'animate-spin' : ''} />
+              {restoring ? 'Restoring...' : 'Restore from Backup'}
+            </button>
+
+            {/* OR divider */}
+            <div className="flex items-center gap-3 py-1">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide">OR</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            {/* Restore from Excel */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Restore from Excel</label>
               <input
                 type="file"
                 accept=".xlsx,.xls"
@@ -290,11 +329,6 @@ export default function Backup() {
               {restoring ? 'Restoring...' : 'Restore from Excel'}
             </button>
           </div>
-
-          {/* Auto backup section hidden for now */}
-          {/* <div className="mt-6 pt-5 border-t border-gray-100">
-            ...auto backup code...
-          </div> */}
         </div>
       </div>
 
@@ -335,6 +369,10 @@ export default function Backup() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
+                      <button onClick={() => handleRestoreFromHistory(b.id, b.name)}
+                        className="p-1.5 rounded-lg text-green-500 hover:bg-green-50 transition-colors" title="Restore">
+                        <RefreshCw size={15} />
+                      </button>
                       <button onClick={() => handleDownload(b.name)}
                         className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors" title="Download Excel">
                         <Download size={15} />

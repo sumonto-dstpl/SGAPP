@@ -1,5 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, User, Bell, Shield, Database, Globe } from 'lucide-react';
+
+const SETTINGS_KEY = 'mullick_fintech_settings';
+
+interface SettingsData {
+  profile: { name: string; email: string; phone: string; org: string };
+  system: { currency: string; language: string; timezone: string; dateFormat: string };
+}
+
+const DEFAULTS: SettingsData = {
+  profile: { name: 'Admin', email: 'admin@mullickfintech.com', phone: '9876543210', org: 'Mullick Fintech' },
+  system: { currency: 'INR (₹)', language: 'English', timezone: 'Asia/Kolkata (IST)', dateFormat: 'DD-MM-YYYY' },
+};
+
+function loadSettings(): SettingsData {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return DEFAULTS;
+    const parsed = JSON.parse(raw) as Partial<SettingsData>;
+    return {
+      profile: { ...DEFAULTS.profile, ...(parsed.profile ?? {}) },
+      system: { ...DEFAULTS.system, ...(parsed.system ?? {}) },
+    };
+  } catch { return DEFAULTS; }
+}
 
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -37,12 +61,19 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 export default function Settings() {
-  const [profile, setProfile] = useState({ name: 'Admin', email: 'admin@pgmsystem.com', phone: '9876543210', org: 'Property & Garage Mgmt.' });
+  const [profile, setProfile] = useState(() => loadSettings().profile);
   const [notifications, setNotifications] = useState({ email: true, sms: false, dueReminder: true, backupAlert: true });
-  const [system, setSystem] = useState({ currency: 'INR (₹)', language: 'English', timezone: 'Asia/Kolkata (IST)', dateFormat: 'DD-MM-YYYY' });
+  const [system, setSystem] = useState(() => loadSettings().system);
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    const s = loadSettings();
+    setProfile(s.profile);
+    setSystem(s.system);
+  }, []);
+
   const handleSave = () => {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ profile, system }));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -161,7 +192,7 @@ export default function Settings() {
         </div>
         <div className="grid grid-cols-4 gap-6">
           {[
-            { label: 'Application Name', value: 'Property & Garage Management System' },
+            { label: 'Application Name', value: 'Mullick Fintech' },
             { label: 'Version', value: '1.0.0' },
             { label: 'Database', value: 'SQLite (Local)' },
             { label: 'Built With', value: 'React + Tauri' },
