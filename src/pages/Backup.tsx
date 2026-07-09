@@ -12,6 +12,16 @@ const PER_PAGE = 5;
 // Auto-backup settings storage key
 const AUTO_BACKUP_KEY = 'pgms_auto_backup_settings';
 
+// Key prefix for storing data snapshots per backup record
+const SNAPSHOT_PREFIX = 'mullick_backup_snapshot_';
+// Active data keys (must match local-adapter.ts)
+const DATA_KEYS = {
+  markets:  'pgms_v2_markets',
+  shops:    'pgms_v2_shops',
+  garages:  'pgms_v2_garages',
+  payments: 'pgms_v2_payments',
+} as const;
+
 interface AutoBackupSettings {
   enabled: boolean;
   frequency: 'Daily' | 'Weekly' | 'Monthly';
@@ -75,6 +85,8 @@ export default function Backup() {
   const [page, setPage] = useState(1);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [uploadedFileData, setUploadedFileData] = useState<ArrayBuffer | null>(null);
+  const [selectedBackupId, setSelectedBackupId] = useState('');
+  const [restoreConfirm, setRestoreConfirm] = useState<null | { source: 'local' | 'excel'; backupName?: string }>(null);
 
   // Auto backup state - hidden for now
   /*
@@ -115,6 +127,15 @@ export default function Backup() {
       await addBackup({
         name: backupName.trim(), description: description || 'Manual backup',
         type: backupType, createdAt: label, size, createdBy: 'Admin',
+      }).then(b => {
+        // Save a data snapshot keyed by backup ID so it can be restored later
+        const snapshot = {
+          markets: JSON.parse(localStorage.getItem(DATA_KEYS.markets) ?? '[]'),
+          shops:   JSON.parse(localStorage.getItem(DATA_KEYS.shops)   ?? '[]'),
+          garages: JSON.parse(localStorage.getItem(DATA_KEYS.garages) ?? '[]'),
+          payments:JSON.parse(localStorage.getItem(DATA_KEYS.payments)?? '[]'),
+        };
+        localStorage.setItem(SNAPSHOT_PREFIX + b.id, JSON.stringify(snapshot));
       });
 
       showSnackbar(`Backup "${backupName}" created & downloaded as Excel`, 'success');
@@ -135,19 +156,30 @@ export default function Backup() {
   };
 
   const handleRestoreFromLocal = async () => {
+    if (!selectedBackupId) {
+      showSnackbar('Please select a backup to restore', 'warning');
+      return;
+    }
+    const snapshotRaw = localStorage.getItem(SNAPSHOT_PREFIX + selectedBackupId);
+    if (!snapshotRaw) {
+      showSnackbar('Backup data not found. This backup may have been created in a different session.', 'error');
+      return;
+    }
     setRestoring(true);
     try {
-      const keys = ['pgms_v2_markets', 'pgms_v2_shops', 'pgms_v2_garages', 'pgms_v2_payments'];
-      const labels = ['Markets', 'Shops', 'Garages', 'Payments'];
-      let total = 0;
-      keys.forEach((k, i) => {
-        const raw = localStorage.getItem(k);
-        if (raw) {
-          try { total += (JSON.parse(raw) as unknown[]).length; } catch {}
-        }
-      });
-      await new Promise(r => setTimeout(r, 1200));
-      showSnackbar(`Local restore completed — ${total} records restored from browser storage`, 'success');
+      const snapshot = JSON.parse(snapshotRaw) as {
+        markets: unknown[]; shops: unknown[]; garages: unknown[]; payments: unknown[];
+      };
+      // Write snapshot back to active data keys
+      localStorage.setItem(DATA_KEYS.markets,  JSON.stringify(snapshot.markets));
+      localStorage.setItem(DATA_KEYS.shops,    JSON.stringify(snapshot.shops));
+      localStorage.setItem(DATA_KEYS.garages,  JSON.stringify(snapshot.garages));
+      localStorage.setItem(DATA_KEYS.payments, JSON.stringify(snapshot.payments));
+      await new Promise(r => setTimeout(r, 1000));
+      const total = snapshot.markets.length + snapshot.shops.length + snapshot.garages.length + snapshot.payments.length;
+      const backupName = backups.find(b => b.id === selectedBackupId)?.name ?? 'selected backup';
+      showSnackbar(`Restored ${total} records from "${backupName}". Refresh the page to see updated data.`, 'success');
+      setSelectedBackupId('');
     } catch { showSnackbar('Failed to restore from local backup', 'error'); }
     finally { setRestoring(false); }
   };
@@ -155,6 +187,8 @@ export default function Backup() {
   const handleDelete = async (id: string, name: string) => {
     try {
       await deleteBackup(id);
+      localStorage.removeItem(SNAPSHOT_PREFIX + id);
+      if (selectedBackupId === id) setSelectedBackupId('');
       showSnackbar(`Backup "${name}" deleted`, 'success');
     } catch { showSnackbar('Failed to delete backup', 'error'); }
   };
@@ -287,9 +321,19 @@ export default function Backup() {
                 <RefreshCw size={16} className="text-blue-600" />
                 <h3 className="text-sm font-semibold text-gray-800">Restore from Local Backup</h3>
               </div>
-              <p className="text-xs text-gray-500 mb-3">Restore data from the browser's local storage backup.</p>
+              <p className="text-xs text-gray-500 mb-3">Select a backup from history to restore its data.</p>
+              <select
+                value={selectedBackupId}
+                onChange={e => setSelectedBackupId(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white mb-3"
+              >
+                <option value="">— Select a backup —</option>
+                {backups.map(b => (
+                  <option key={b.id} value={b.id}>{b.name} ({b.createdAt})</option>
+                ))}
+              </select>
               <button
-                onClick={handleRestoreFromLocal} disabled={restoring}
+                onClick={handleRestoreFromLocal} disabled={restoring || !selectedBackupId}
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-60"
               >
                 <RefreshCw size={16} className={restoring ? 'animate-spin' : ''} />
